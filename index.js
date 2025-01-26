@@ -70,11 +70,11 @@ app.get('/medicamentos', (req, res) => {
 
 // REGISTO DE USUARIOS
 app.post('/usuarios', (req, res) => {
-    const { nombre, correo, clave, tipo_usuario} = req.body;
+    const { nombre, correo, clave, tipo_usuario } = req.body;
 
     // Sanitizar y formatear datos
     const sanitizedNombre = validator.escape(nombre);
-    const sanitizedCorreo = validator.escape(correo);
+    const sanitizedCorreo = validator.escape(correo.toLowerCase());
     const sanitizedClave = bcrypt.hashSync(validator.escape(clave), 8); // Encriptar la clave
     const sanitizedTipoUsuario = validator.escape(tipo_usuario);
 
@@ -83,7 +83,7 @@ app.post('/usuarios', (req, res) => {
         VALUES ('${sanitizedNombre}', '${sanitizedCorreo}', '${sanitizedClave}', '${sanitizedTipoUsuario}')
     `;
 
-    db.run(query, function (err) {
+    db.run(query, [], function (err) {
         if (err) {
             console.error('Error al registrar el usuario:', err.message);
             res.status(500).json({ error: err.message });
@@ -94,12 +94,33 @@ app.post('/usuarios', (req, res) => {
     });
 });
 
+
+//CONSULTA DE USUARIO
+
+app.get('/usuarios/:id', (req, res) => {
+    const userId = req.params.id;
+
+    const query = `SELECT usuario_id, nombre, correo FROM usuarios WHERE usuario_id = '${userId}'`;
+    db.get(query, [userId], (err, row) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        if (!row) {
+            res.status(404).json({ error: 'Usuario no encontrado' });
+            return;
+        }
+        res.json(row);
+    });
+});
+
 //INICIO DE SESION
 
 app.post('/login', (req, res) => {
     const { correo, clave } = req.body;
 
-    const sanitizedCorreo = validator.escape(correo);
+    // Convertir el correo a minúsculas
+    const sanitizedCorreo = validator.escape(correo.toLowerCase());
     const sanitizedClave = validator.escape(clave);
 
     const query = `SELECT * FROM usuarios WHERE correo = '${sanitizedCorreo}'`;
@@ -119,10 +140,12 @@ app.post('/login', (req, res) => {
             return;
         }
 
-        const token = jwt.sign({ id: row.id }, 'secret', { expiresIn: 86400 }); // 24 horas
-        res.status(200).json({ auth: true, token });
+        const token = jwt.sign({ id: row.usuario_id }, 'secret', { expiresIn: 86400 }); // 24 horas
+        res.status(200).json({ auth: true, token, userId: row.usuario_id });
     });
 });
+
+
 
 
 // REGISTO DE MEDICAMENTOS
@@ -238,6 +261,34 @@ app.post('/novedades', (req, res) => {
         console.log('Novedad registrada con ID:', this.lastID);
         res.json({ novedad_id: this.lastID });
     });
+});
+
+//CIERRE DE SESION
+
+const blacklist = new Set();
+
+app.post('/logout', (req, res) => {
+    const token = req.headers['x-access-token'] || req.headers['authorization'];
+    
+    if (!token) {
+        return res.status(400).json({ error: 'Token no proporcionado' });
+    }
+
+    blacklist.add(token); // Añadir el token a la lista negra
+
+    res.status(200).json({ message: 'Sesión cerrada correctamente' });
+});
+
+// Middleware para verificar el token
+app.use((req, res, next) => {
+    const token = req.headers['x-access-token'] || req.headers['authorization'];
+
+    if (blacklist.has(token)) {
+        return res.status(401).json({ error: 'Token inválido' });
+    }
+
+    // Continuar con el flujo normal de verificación del token
+    next();
 });
 
 app.listen(port, () => {
