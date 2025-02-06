@@ -180,6 +180,97 @@ app.post('/medicamentos', (req, res) => {
     });
 });
 
+
+// CONSULTA DE MEDICAMENTOS CON FILTROS
+
+app.get('/medicamentos', (req, res) => {
+    const { nombre, especialista, presentacion, fecha_entrega } = req.query;
+    
+    let query = 'SELECT * FROM medicamentos WHERE 1=1';
+    
+    if (nombre) {
+        query += ` AND nombre LIKE "%${validator.escape(nombre)}%"`;
+    }
+    
+    if (especialista) {
+        query += ` AND especialista LIKE "%${validator.escape(especialista)}%"`;
+    }
+    
+    if (presentacion) {
+        query += ` AND presentacion LIKE "%${validator.escape(presentacion)}%"`;
+    }
+    
+    if (fecha_entrega) {
+        query += ` AND fecha_entrega = "${moment(fecha_entrega).format('YYYY-MM-DD')}"`;
+    }
+    
+    console.log('Consulta SQL generada:', query);
+    
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('Error al obtener medicamentos:', err.message);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        console.log('Medicamentos devueltos:', rows);
+        res.json(rows);
+    });
+});
+
+
+// NUEVAS RUTAS PARA OBTENER LISTAS DE OPCIONES DE FILTROS
+app.get('/nombres', (req, res) => {
+    const query = 'SELECT DISTINCT nombre FROM medicamentos';
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('Error al obtener nombres:', err.message);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        console.log('Nombres obtenidos:', rows); // Verifica los nombres obtenidos
+        res.json(rows.map(row => row.nombre));
+    });
+});
+
+app.get('/presentaciones', (req, res) => {
+    const query = 'SELECT DISTINCT presentacion FROM medicamentos';
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('Error al obtener presentaciones:', err.message);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        console.log('Presentaciones obtenidas:', rows); // Verifica las presentaciones obtenidas
+        res.json(rows.map(row => row.presentacion));
+    });
+});
+
+app.get('/especialistas', (req, res) => {
+    const query = 'SELECT DISTINCT especialista FROM medicamentos';
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('Error al obtener especialistas:', err.message);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        console.log('Especialistas obtenidos:', rows); // Verifica los especialistas obtenidos
+        res.json(rows.map(row => row.especialista));
+    });
+});
+
+app.get('/fechas-entrega', (req, res) => {
+    const query = 'SELECT DISTINCT fecha_entrega FROM medicamentos';
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('Error al obtener fechas de entrega:', err.message);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        console.log('Fechas de entrega obtenidas:', rows); // Verifica las fechas de entrega obtenidas
+        res.json(rows.map(row => row.fecha_entrega));
+    });
+});
+
 // REGISTO DE ALIMENTOS
 app.post('/alimentos', (req, res) => {
     const { nombre, presentacion, cantidad, fecha_compra} = req.body;
