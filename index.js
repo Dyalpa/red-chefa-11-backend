@@ -145,9 +145,6 @@ app.post('/login', (req, res) => {
     });
 });
 
-
-
-
 // REGISTO DE MEDICAMENTOS
 app.post('/medicamentos', (req, res) => {
     const { nombre, presentacion, cantidad, fecha_entrega, dosis, frecuencia, especialidad } = req.body;
@@ -270,6 +267,66 @@ app.get('/fechas-entrega', (req, res) => {
         res.json(rows.map(row => row.fecha_entrega));
     });
 });
+
+app.get('/medicamento_id', (req, res) => {
+    const query = 'SELECT DISTINCT medicamento_id FROM medicamentos';
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('Error al obtener fechas de entrega:', err.message);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        console.log('IDs obtenidos:', rows); // Verifica los IDs obtenidas
+        res.json(rows.map(row => row.medicamen_id));
+    });
+});
+
+// REGISTO DE TRATAMIENTOS
+
+app.post('/tratamientos', (req, res) => {
+    const { medicamento_id, usuario_id, hora_administracion, dosis, frecuencia } = req.body;
+
+    console.log('Datos recibidos:', { medicamento_id, usuario_id, hora_administracion, dosis, frecuencia });
+
+    if (!medicamento_id || !usuario_id || !hora_administracion || !dosis || !frecuencia) {
+        res.status(400).json({ error: 'Todos los campos son obligatorios' });
+        return;
+    }
+
+    // Sanitizar y formatear datos
+    const sanitizedMedicamento_id = validator.escape(medicamento_id.toString());
+    const sanitizedUsuario_id = validator.escape(usuario_id.toString());
+    const sanitizedDosis = validator.escape(dosis.toString());
+    const sanitizedFrecuencia = validator.escape(frecuencia.toString());
+    const sanitizedHora_administracion = validator.escape(hora_administracion) + ':00'; // Añadir segundos si no están presentes
+
+    console.log('Datos sanitizados:', {
+        sanitizedMedicamento_id,
+        sanitizedUsuario_id,
+        sanitizedDosis,
+        sanitizedFrecuencia,
+        sanitizedHora_administracion,
+    });
+
+    const query = `
+        INSERT INTO tratamientos (medicamento_id, usuario_id, hora_administracion, dosis, frecuencia)
+        VALUES (${sanitizedMedicamento_id}, ${sanitizedUsuario_id}, '${sanitizedHora_administracion}', ${sanitizedDosis}, ${sanitizedFrecuencia})
+    `;
+
+    console.log('Valores para la consulta:', [sanitizedMedicamento_id, sanitizedUsuario_id, sanitizedDosis, sanitizedFrecuencia, sanitizedHora_administracion]);
+
+    db.run(query, function(err) {
+        if (err) {
+            console.error('Error al registrar el tratamiento:', err.message);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        console.log('Tratamiento registrado con ID:', this.lastID);
+        res.json({ tratamiento_id: this.lastID });
+    });
+});
+
+
 
 // REGISTO DE ALIMENTOS
 app.post('/alimentos', (req, res) => {
