@@ -68,6 +68,16 @@ app.get('/medicamentos', (req, res) => {
     });
 });
 
+app.get('/tratamientos', (req, res) => {
+    db.all('SELECT * FROM tratamientos', [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
 // REGISTO DE USUARIOS
 app.post('/usuarios', (req, res) => {
     const { nombre, correo, clave, tipo_usuario } = req.body;
